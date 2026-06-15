@@ -183,7 +183,9 @@ async function runLookup() {
       onProgress(done, total) {
         const pct = Math.round((done / total) * 100);
         progressFill.style.width = `${pct}%`;
-        progressText.textContent = `${done} / ${total}`;
+        const suffix =
+          arguments[2] || `${done} / ${total}`;
+        progressText.textContent = suffix;
         if (progressBar) progressBar.setAttribute("aria-valuenow", String(pct));
       },
     });

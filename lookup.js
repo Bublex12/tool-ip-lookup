@@ -1,5 +1,6 @@
 const MAX_IPS = 500;
-const LOOKUP_DELAY_MS = 120;
+const BATCH_SIZE = 45;
+const BATCH_COOLDOWN_MS = 62_000;
 
 const IPV4_RE =
   /^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$/;
@@ -68,7 +69,11 @@ function prepareIps(raw, dedupe) {
   const invalid = [];
 
   for (const token of ips) {
-    if (!isValidIp(token)) {
+    if (IPV6_RE.test(token)) {
+      invalid.push({ ip: token, error: "IPv6 пока не поддерживается" });
+      continue;
+    }
+    if (!IPV4_RE.test(token)) {
       invalid.push({ ip: token, error: "Неверный формат IP" });
       continue;
     }
@@ -88,31 +93,24 @@ function prepareIps(raw, dedupe) {
   };
 }
 
-async function lookupOne(ip) {
-  const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
-    headers: { Accept: "application/json" },
+async function lookupChunk(ips) {
+  const res = await fetch("/api/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ips }),
   });
 
+  const data = await res.json().catch(() => ({}));
+
+  if (res.status === 429) {
+    throw new Error(data.error || "Лимит запросов, подождите минуту");
+  }
+
   if (!res.ok) {
-    return { ip, ok: false, error: `HTTP ${res.status}` };
+    throw new Error(data.error || `Ошибка сервера (${res.status})`);
   }
 
-  const data = await res.json();
-  if (!data.success) {
-    return { ip, ok: false, error: data.message || "Не найдено" };
-  }
-
-  return {
-    ip,
-    ok: true,
-    country: data.country || "—",
-    countryCode: data.country_code || "",
-    city: data.city || "—",
-    region: data.region || "—",
-    isp: data.connection?.isp || data.connection?.org || "—",
-    timezone: data.timezone?.id || "—",
-    flag: data.flag?.img || "",
-  };
+  return data.results ?? [];
 }
 
 function sleep(ms) {
@@ -121,22 +119,39 @@ function sleep(ms) {
 
 async function lookupBatch(ips, { onProgress, signal }) {
   const results = [];
+  const chunks = [];
 
-  for (let i = 0; i < ips.length; i += 1) {
+  for (let i = 0; i < ips.length; i += BATCH_SIZE) {
+    chunks.push(ips.slice(i, i + BATCH_SIZE));
+  }
+
+  let done = 0;
+
+  for (let c = 0; c < chunks.length; c += 1) {
     if (signal?.aborted) break;
 
-    const ip = ips[i];
+    const chunk = chunks[c];
+
     try {
-      const row = await lookupOne(ip);
-      results.push(row);
-    } catch {
-      results.push({ ip, ok: false, error: "Ошибка сети" });
+      const rows = await lookupChunk(chunk);
+      results.push(...rows);
+      done += chunk.length;
+      onProgress?.(done, ips.length);
+    } catch (err) {
+      chunk.forEach((ip) => {
+        results.push({
+          ip,
+          ok: false,
+          error: err.message || "Ошибка запроса",
+        });
+      });
+      done += chunk.length;
+      onProgress?.(done, ips.length);
     }
 
-    onProgress?.(i + 1, ips.length);
-
-    if (i < ips.length - 1) {
-      await sleep(LOOKUP_DELAY_MS);
+    if (c < chunks.length - 1 && !signal?.aborted) {
+      onProgress?.(done, ips.length, "Пауза 1 мин (лимит API)…");
+      await sleep(BATCH_COOLDOWN_MS);
     }
   }
 
