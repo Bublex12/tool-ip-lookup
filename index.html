@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IP Geolocation</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__brand">
+        <img class="site-icon" src="icon.svg" width="20" height="20" alt="" />
+        <a id="hub-link" class="nav-back label" href="#">← Все инструменты</a>
+      </div>
+      <p id="header-status" class="body secondary site-header__tag"></p>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title" class="display">IP Lookup</h1>
+        <p class="hero__lead">
+          Вставьте или загрузите список IP — страна, город, регион и провайдер.
+          До 500 адресов за раз.
+        </p>
+      </section>
+
+      <section class="tool" aria-labelledby="input-title">
+        <div class="tool__toolbar">
+          <h2 id="input-title" class="h1 tool__title">Список IP</h2>
+          <div class="tool__toolbar-actions">
+            <label class="button-secondary file-btn">
+              Файл .txt
+              <input id="file-input" type="file" accept=".txt,text/plain" hidden />
+            </label>
+            <button id="paste-btn" class="button-secondary" type="button">Вставить</button>
+            <button id="clear-btn" class="button-ghost" type="button">Очистить</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="label">адреса · по строке, через запятую или пробел</span>
+          <textarea
+            id="ip-input"
+            class="field__input field__input--mono"
+            rows="8"
+            spellcheck="false"
+            placeholder="8.8.8.8&#10;1.1.1.1&#10;77.88.8.8"
+          ></textarea>
+        </label>
+
+        <label class="option">
+          <input id="dedupe" type="checkbox" checked />
+          <span class="body">Убрать дубли</span>
+        </label>
+
+        <div class="tool__actions">
+          <button id="lookup-btn" class="button-primary" type="button">Определить</button>
+          <button id="export-btn" class="button-secondary" type="button" disabled>
+            CSV
+          </button>
+          <button id="cancel-btn" class="button-ghost" type="button" hidden>
+            Отмена
+          </button>
+        </div>
+
+        <div id="progress-wrap" class="progress-wrap" hidden>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="progress-fill" class="progress-bar__fill"></div>
+          </div>
+          <p id="progress-text" class="body secondary progress-text"></p>
+        </div>
+
+        <p id="input-error" class="parse-error" hidden></p>
+      </section>
+
+      <section id="summary-section" class="results" hidden aria-labelledby="summary-title">
+        <h2 id="summary-title" class="h1">Сводка</h2>
+        <div id="stats" class="stats-grid"></div>
+        <div class="breakdown">
+          <div class="breakdown__col card">
+            <h3 class="label breakdown__heading">Страны</h3>
+            <ul id="countries-list" class="breakdown__list"></ul>
+          </div>
+          <div class="breakdown__col card">
+            <h3 class="label breakdown__heading">Города</h3>
+            <ul id="cities-list" class="breakdown__list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="table-section" class="results" hidden aria-labelledby="table-title">
+        <h2 id="table-title" class="h1">Результаты</h2>
+        <div class="table-wrap card">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">IP</th>
+                <th scope="col">Страна</th>
+                <th scope="col">Город</th>
+                <th scope="col">Регион</th>
+                <th scope="col">Провайдер</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="body secondary">
+        Геолокация через ipwho.is · IP уходят только к сервису определения
+      </p>
+    </footer>
+
+    <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
+
+    <script src="config.js"></script>
+    <script src="lookup.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
