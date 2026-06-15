@@ -180,12 +180,10 @@ async function runLookup() {
   try {
     const results = await lookupBatch(ips, {
       signal: abortController.signal,
-      onProgress(done, total) {
+      onProgress(done, total, statusText) {
         const pct = Math.round((done / total) * 100);
         progressFill.style.width = `${pct}%`;
-        const suffix =
-          arguments[2] || `${done} / ${total}`;
-        progressText.textContent = suffix;
+        progressText.textContent = statusText || `${done} / ${total}`;
         if (progressBar) progressBar.setAttribute("aria-valuenow", String(pct));
       },
     });
