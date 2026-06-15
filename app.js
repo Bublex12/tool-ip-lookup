@@ -26,13 +26,37 @@ const resultsBody = document.getElementById("results-body");
 const filterCountEl = document.getElementById("filter-count");
 const filterEmptyEl = document.getElementById("filter-empty");
 const resetFiltersBtn = document.getElementById("reset-filters-btn");
-const filterInputs = [...document.querySelectorAll("[data-filter]")];
+const filterMenu = document.getElementById("filter-menu");
+const filterMenuTitle = document.getElementById("filter-menu-title");
+const filterMenuSearch = document.getElementById("filter-menu-search");
+const filterMenuAll = document.getElementById("filter-menu-all");
+const filterMenuList = document.getElementById("filter-menu-list");
+const filterMenuApply = document.getElementById("filter-menu-apply");
+const filterMenuClear = document.getElementById("filter-menu-clear");
+const filterBtns = [...document.querySelectorAll(".col-filter__btn")];
 const toastEl = document.getElementById("toast");
 
 let allRows = [];
 let abortController = null;
+let columnFilters = {};
+let openFilterKey = null;
+let openFilterBtn = null;
+let pendingFilterValues = new Set();
 
 const FILTER_KEYS = ["ip", "country", "city", "region", "isp"];
+
+const FILTER_LABELS = {
+  ip: "IP",
+  country: "Страна",
+  city: "Город",
+  region: "Регион",
+  isp: "Провайдер",
+};
+
+function initColumnFilters() {
+  columnFilters = Object.fromEntries(FILTER_KEYS.map((k) => [k, null]));
+  updateFilterButtonStates();
+}
 
 function rowFieldValues(row) {
   if (!row.ok) {
@@ -53,41 +77,168 @@ function rowFieldValues(row) {
   };
 }
 
-function getActiveFilters() {
-  const filters = {};
-  filterInputs.forEach((input) => {
-    const key = input.dataset.filter;
-    const value = input.value.trim().toLowerCase();
-    if (value) filters[key] = value;
+function rowsForColumnFilter(key) {
+  return allRows.filter((row) => {
+    const fields = rowFieldValues(row);
+    return FILTER_KEYS.every((k) => {
+      if (k === key) return true;
+      const allowed = columnFilters[k];
+      if (!allowed) return true;
+      return allowed.has(String(fields[k]));
+    });
   });
-  return filters;
+}
+
+function uniqueValuesForColumn(key) {
+  const values = rowsForColumnFilter(key).map(
+    (row) => String(rowFieldValues(row)[key])
+  );
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, "ru"));
 }
 
 function hasActiveFilters() {
-  return filterInputs.some((input) => input.value.trim());
+  return FILTER_KEYS.some((key) => columnFilters[key] !== null);
 }
 
-function matchesFilters(row, filters) {
+function matchesFilters(row) {
   const fields = rowFieldValues(row);
   return FILTER_KEYS.every((key) => {
-    const needle = filters[key];
-    if (!needle) return true;
-    return String(fields[key] ?? "")
-      .toLowerCase()
-      .includes(needle);
+    const allowed = columnFilters[key];
+    if (!allowed) return true;
+    return allowed.has(String(fields[key]));
   });
 }
 
 function getVisibleRows() {
-  const filters = getActiveFilters();
-  if (!Object.keys(filters).length) return allRows;
-  return allRows.filter((row) => matchesFilters(row, filters));
+  if (!hasActiveFilters()) return allRows;
+  return allRows.filter((row) => matchesFilters(row));
+}
+
+function updateFilterButtonStates() {
+  filterBtns.forEach((btn) => {
+    const key = btn.dataset.filterKey;
+    btn.classList.toggle("col-filter__btn--active", columnFilters[key] !== null);
+  });
+}
+
+function closeFilterMenu() {
+  if (!filterMenu.hidden) {
+    filterMenu.hidden = true;
+    if (openFilterBtn) {
+      openFilterBtn.setAttribute("aria-expanded", "false");
+    }
+    openFilterKey = null;
+    openFilterBtn = null;
+  }
+}
+
+function syncSelectAllCheckbox() {
+  const boxes = [...filterMenuList.querySelectorAll('input[type="checkbox"]')];
+  const visible = boxes.filter((el) => el.closest("label").style.display !== "none");
+  if (!visible.length) {
+    filterMenuAll.checked = false;
+    filterMenuAll.indeterminate = false;
+    return;
+  }
+  const checked = visible.filter((el) => el.checked).length;
+  filterMenuAll.checked = checked === visible.length;
+  filterMenuAll.indeterminate = checked > 0 && checked < visible.length;
+}
+
+function renderFilterMenuList(values) {
+  filterMenuList.replaceChildren();
+
+  values.forEach((value) => {
+    const label = document.createElement("label");
+    label.className = "filter-menu__item";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    input.checked =
+      columnFilters[openFilterKey] === null ||
+      pendingFilterValues.has(value);
+
+    input.addEventListener("change", () => {
+      if (input.checked) pendingFilterValues.add(value);
+      else pendingFilterValues.delete(value);
+      syncSelectAllCheckbox();
+    });
+
+    const span = document.createElement("span");
+    span.className = "filter-menu__item-text";
+    span.textContent = value;
+
+    label.append(input, span);
+    filterMenuList.appendChild(label);
+  });
+
+  syncSelectAllCheckbox();
+}
+
+function filterMenuListBySearch(query) {
+  const q = query.trim().toLowerCase();
+  filterMenuList.querySelectorAll(".filter-menu__item").forEach((label) => {
+    const text = label.textContent.toLowerCase();
+    label.style.display = !q || text.includes(q) ? "" : "none";
+  });
+  syncSelectAllCheckbox();
+}
+
+function openFilterMenu(key, btn) {
+  closeFilterMenu();
+
+  openFilterKey = key;
+  openFilterBtn = btn;
+
+  const values = uniqueValuesForColumn(key);
+  const current = columnFilters[key];
+
+  pendingFilterValues = current ? new Set(current) : new Set(values);
+
+  filterMenuTitle.textContent = FILTER_LABELS[key];
+  filterMenuSearch.value = "";
+  renderFilterMenuList(values);
+
+  const rect = btn.getBoundingClientRect();
+  filterMenu.hidden = false;
+  filterMenu.style.top = `${rect.bottom + 4}px`;
+  filterMenu.style.left = `${Math.min(rect.left, window.innerWidth - 280)}px`;
+
+  btn.setAttribute("aria-expanded", "true");
+  filterMenuSearch.focus();
+}
+
+function applyFilterMenu() {
+  if (!openFilterKey) return;
+
+  const values = uniqueValuesForColumn(openFilterKey);
+  const checked = values.filter((v) => pendingFilterValues.has(v));
+
+  if (checked.length === 0) {
+    showToast("Выберите хотя бы одно значение");
+    return;
+  }
+
+  columnFilters[openFilterKey] =
+    checked.length === values.length ? null : new Set(checked);
+
+  closeFilterMenu();
+  updateFilterButtonStates();
+  applyFilters();
+}
+
+function clearColumnFilter() {
+  if (!openFilterKey) return;
+  columnFilters[openFilterKey] = null;
+  closeFilterMenu();
+  updateFilterButtonStates();
+  applyFilters();
 }
 
 function resetFilters() {
-  filterInputs.forEach((input) => {
-    input.value = "";
-  });
+  initColumnFilters();
+  closeFilterMenu();
   applyFilters();
 }
 
@@ -235,7 +386,7 @@ function applyFilters() {
 
 function renderResults(rows, invalid) {
   allRows = [...invalid, ...rows];
-  resetFilters();
+  initColumnFilters();
   applyFilters();
 
   summarySection.hidden = false;
@@ -343,7 +494,8 @@ clearBtn.addEventListener("click", () => {
   if (abortController) abortController.abort();
   inputEl.value = "";
   allRows = [];
-  resetFilters();
+  initColumnFilters();
+  closeFilterMenu();
   summarySection.hidden = true;
   tableSection.hidden = true;
   exportBtn.disabled = true;
@@ -355,9 +507,50 @@ clearBtn.addEventListener("click", () => {
 });
 cancelBtn.addEventListener("click", () => abortController?.abort());
 
-filterInputs.forEach((input) => {
-  input.addEventListener("input", applyFilters);
+filterBtns.forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const key = btn.dataset.filterKey;
+    if (openFilterKey === key && !filterMenu.hidden) {
+      closeFilterMenu();
+    } else {
+      openFilterMenu(key, btn);
+    }
+  });
 });
+
+filterMenuApply.addEventListener("click", applyFilterMenu);
+filterMenuClear.addEventListener("click", clearColumnFilter);
+filterMenuSearch.addEventListener("input", () => {
+  filterMenuListBySearch(filterMenuSearch.value);
+});
+
+filterMenuAll.addEventListener("change", () => {
+  const checked = filterMenuAll.checked;
+  filterMenuList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    const label = input.closest("label");
+    if (label.style.display === "none") return;
+    input.checked = checked;
+    if (checked) pendingFilterValues.add(input.value);
+    else pendingFilterValues.delete(input.value);
+  });
+  syncSelectAllCheckbox();
+});
+
+document.addEventListener("click", (e) => {
+  if (
+    !filterMenu.hidden &&
+    !filterMenu.contains(e.target) &&
+    !e.target.closest(".col-filter__btn")
+  ) {
+    closeFilterMenu();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeFilterMenu();
+});
+
 resetFiltersBtn.addEventListener("click", resetFilters);
 
 document.addEventListener("keydown", (e) => {

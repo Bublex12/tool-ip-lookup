@@ -109,74 +109,81 @@
           <table class="results-table">
             <thead>
               <tr>
-                <th scope="col">#</th>
-                <th scope="col">IP</th>
-                <th scope="col">Страна</th>
-                <th scope="col">Город</th>
-                <th scope="col">Регион</th>
-                <th scope="col">Провайдер</th>
-              </tr>
-              <tr class="results-table__filters">
-                <th scope="col" aria-hidden="true"></th>
-                <th scope="col">
-                  <label class="sr-only" for="filter-ip">Фильтр IP</label>
-                  <input
-                    id="filter-ip"
-                    class="filter-input"
-                    type="search"
-                    placeholder="IP…"
-                    autocomplete="off"
-                    spellcheck="false"
-                    data-filter="ip"
-                  />
+                <th scope="col" class="col-filter-th col-filter-th--index">#</th>
+                <th scope="col" class="col-filter-th">
+                  <div class="col-filter">
+                    <span>IP</span>
+                    <button
+                      type="button"
+                      class="col-filter__btn"
+                      data-filter-key="ip"
+                      aria-label="Фильтр IP"
+                      aria-expanded="false"
+                      aria-haspopup="true"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </th>
-                <th scope="col">
-                  <label class="sr-only" for="filter-country">Фильтр страна</label>
-                  <input
-                    id="filter-country"
-                    class="filter-input"
-                    type="search"
-                    placeholder="Страна…"
-                    autocomplete="off"
-                    spellcheck="false"
-                    data-filter="country"
-                  />
+                <th scope="col" class="col-filter-th">
+                  <div class="col-filter">
+                    <span>Страна</span>
+                    <button
+                      type="button"
+                      class="col-filter__btn"
+                      data-filter-key="country"
+                      aria-label="Фильтр страна"
+                      aria-expanded="false"
+                      aria-haspopup="true"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </th>
-                <th scope="col">
-                  <label class="sr-only" for="filter-city">Фильтр город</label>
-                  <input
-                    id="filter-city"
-                    class="filter-input"
-                    type="search"
-                    placeholder="Город…"
-                    autocomplete="off"
-                    spellcheck="false"
-                    data-filter="city"
-                  />
+                <th scope="col" class="col-filter-th">
+                  <div class="col-filter">
+                    <span>Город</span>
+                    <button
+                      type="button"
+                      class="col-filter__btn"
+                      data-filter-key="city"
+                      aria-label="Фильтр город"
+                      aria-expanded="false"
+                      aria-haspopup="true"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </th>
-                <th scope="col">
-                  <label class="sr-only" for="filter-region">Фильтр регион</label>
-                  <input
-                    id="filter-region"
-                    class="filter-input"
-                    type="search"
-                    placeholder="Регион…"
-                    autocomplete="off"
-                    spellcheck="false"
-                    data-filter="region"
-                  />
+                <th scope="col" class="col-filter-th">
+                  <div class="col-filter">
+                    <span>Регион</span>
+                    <button
+                      type="button"
+                      class="col-filter__btn"
+                      data-filter-key="region"
+                      aria-label="Фильтр регион"
+                      aria-expanded="false"
+                      aria-haspopup="true"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </th>
-                <th scope="col">
-                  <label class="sr-only" for="filter-isp">Фильтр провайдер</label>
-                  <input
-                    id="filter-isp"
-                    class="filter-input"
-                    type="search"
-                    placeholder="Провайдер…"
-                    autocomplete="off"
-                    spellcheck="false"
-                    data-filter="isp"
-                  />
+                <th scope="col" class="col-filter-th">
+                  <div class="col-filter">
+                    <span>Провайдер</span>
+                    <button
+                      type="button"
+                      class="col-filter__btn"
+                      data-filter-key="isp"
+                      aria-label="Фильтр провайдер"
+                      aria-expanded="false"
+                      aria-haspopup="true"
+                    >
+                      ▾
+                    </button>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -196,6 +203,27 @@
     </footer>
 
     <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
+
+    <div id="filter-menu" class="filter-menu" hidden role="dialog" aria-modal="true">
+      <p id="filter-menu-title" class="filter-menu__title label"></p>
+      <input
+        id="filter-menu-search"
+        class="filter-menu__search"
+        type="search"
+        placeholder="Поиск в списке…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <label class="filter-menu__select-all">
+        <input id="filter-menu-all" type="checkbox" checked />
+        <span class="body">(Выбрать все)</span>
+      </label>
+      <div id="filter-menu-list" class="filter-menu__list"></div>
+      <div class="filter-menu__actions">
+        <button id="filter-menu-apply" class="button-primary" type="button">OK</button>
+        <button id="filter-menu-clear" class="button-ghost" type="button">Сбросить</button>
+      </div>
+    </div>
 
     <script src="config.js"></script>
     <script src="lookup.js"></script>
