@@ -96,7 +96,15 @@
       </section>
 
       <section id="table-section" class="results" hidden aria-labelledby="table-title">
-        <h2 id="table-title" class="h1">Результаты</h2>
+        <div class="table-section__head">
+          <h2 id="table-title" class="h1 results__title">Результаты</h2>
+          <div class="table-section__meta">
+            <p id="filter-count" class="body secondary"></p>
+            <button id="reset-filters-btn" class="button-ghost" type="button" hidden>
+              Сбросить фильтры
+            </button>
+          </div>
+        </div>
         <div class="table-wrap card">
           <table class="results-table">
             <thead>
@@ -108,10 +116,76 @@
                 <th scope="col">Регион</th>
                 <th scope="col">Провайдер</th>
               </tr>
+              <tr class="results-table__filters">
+                <th scope="col" aria-hidden="true"></th>
+                <th scope="col">
+                  <label class="sr-only" for="filter-ip">Фильтр IP</label>
+                  <input
+                    id="filter-ip"
+                    class="filter-input"
+                    type="search"
+                    placeholder="IP…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-filter="ip"
+                  />
+                </th>
+                <th scope="col">
+                  <label class="sr-only" for="filter-country">Фильтр страна</label>
+                  <input
+                    id="filter-country"
+                    class="filter-input"
+                    type="search"
+                    placeholder="Страна…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-filter="country"
+                  />
+                </th>
+                <th scope="col">
+                  <label class="sr-only" for="filter-city">Фильтр город</label>
+                  <input
+                    id="filter-city"
+                    class="filter-input"
+                    type="search"
+                    placeholder="Город…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-filter="city"
+                  />
+                </th>
+                <th scope="col">
+                  <label class="sr-only" for="filter-region">Фильтр регион</label>
+                  <input
+                    id="filter-region"
+                    class="filter-input"
+                    type="search"
+                    placeholder="Регион…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-filter="region"
+                  />
+                </th>
+                <th scope="col">
+                  <label class="sr-only" for="filter-isp">Фильтр провайдер</label>
+                  <input
+                    id="filter-isp"
+                    class="filter-input"
+                    type="search"
+                    placeholder="Провайдер…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-filter="isp"
+                  />
+                </th>
+              </tr>
             </thead>
             <tbody id="results-body"></tbody>
           </table>
         </div>
+        <p id="filter-empty" class="body secondary filter-empty" hidden>
+          Нет строк по текущим фильтрам
+        </p>
       </section>
     </main>
 

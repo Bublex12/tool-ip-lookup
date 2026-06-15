@@ -23,10 +23,94 @@ const statsEl = document.getElementById("stats");
 const countriesList = document.getElementById("countries-list");
 const citiesList = document.getElementById("cities-list");
 const resultsBody = document.getElementById("results-body");
+const filterCountEl = document.getElementById("filter-count");
+const filterEmptyEl = document.getElementById("filter-empty");
+const resetFiltersBtn = document.getElementById("reset-filters-btn");
+const filterInputs = [...document.querySelectorAll("[data-filter]")];
 const toastEl = document.getElementById("toast");
 
 let allRows = [];
 let abortController = null;
+
+const FILTER_KEYS = ["ip", "country", "city", "region", "isp"];
+
+function rowFieldValues(row) {
+  if (!row.ok) {
+    return {
+      ip: row.ip,
+      country: "—",
+      city: "—",
+      region: "—",
+      isp: row.error || "ошибка",
+    };
+  }
+  return {
+    ip: row.ip,
+    country: row.country || "—",
+    city: row.city || "—",
+    region: row.region || "—",
+    isp: row.isp || "—",
+  };
+}
+
+function getActiveFilters() {
+  const filters = {};
+  filterInputs.forEach((input) => {
+    const key = input.dataset.filter;
+    const value = input.value.trim().toLowerCase();
+    if (value) filters[key] = value;
+  });
+  return filters;
+}
+
+function hasActiveFilters() {
+  return filterInputs.some((input) => input.value.trim());
+}
+
+function matchesFilters(row, filters) {
+  const fields = rowFieldValues(row);
+  return FILTER_KEYS.every((key) => {
+    const needle = filters[key];
+    if (!needle) return true;
+    return String(fields[key] ?? "")
+      .toLowerCase()
+      .includes(needle);
+  });
+}
+
+function getVisibleRows() {
+  const filters = getActiveFilters();
+  if (!Object.keys(filters).length) return allRows;
+  return allRows.filter((row) => matchesFilters(row, filters));
+}
+
+function resetFilters() {
+  filterInputs.forEach((input) => {
+    input.value = "";
+  });
+  applyFilters();
+}
+
+function updateFilterUi(visibleCount) {
+  const total = allRows.length;
+  const filtered = hasActiveFilters();
+
+  resetFiltersBtn.hidden = !filtered;
+
+  if (!total) {
+    filterCountEl.textContent = "";
+    filterEmptyEl.hidden = true;
+    return;
+  }
+
+  if (filtered && visibleCount !== total) {
+    filterCountEl.textContent = `Показано ${visibleCount} из ${total}`;
+  } else {
+    filterCountEl.textContent = `${total} строк`;
+  }
+
+  filterEmptyEl.hidden = visibleCount > 0 || !filtered;
+}
 
 function showToast(message) {
   if (!toastEl) return;
@@ -112,16 +196,15 @@ function renderTable(rows) {
     const tr = document.createElement("tr");
     if (!row.ok) tr.classList.add("results-table__row--error");
 
-    const cells = row.ok
-      ? [
-          String(index + 1),
-          row.ip,
-          row.country,
-          row.city,
-          row.region,
-          row.isp,
-        ]
-      : [String(index + 1), row.ip, "—", "—", "—", row.error || "ошибка"];
+    const fields = rowFieldValues(row);
+    const cells = [
+      String(index + 1),
+      fields.ip,
+      fields.country,
+      fields.city,
+      fields.region,
+      fields.isp,
+    ];
 
     cells.forEach((text, i) => {
       const td = document.createElement("td");
@@ -134,20 +217,33 @@ function renderTable(rows) {
   });
 }
 
-function renderResults(rows, invalid) {
-  allRows = [...invalid, ...rows];
-  const summary = summarize(rows);
+function applyFilters() {
+  if (!allRows.length) return;
 
-  renderStats(summary, invalid.length);
+  const visible = getVisibleRows();
+  renderTable(visible);
+  updateFilterUi(visible.length);
+
+  const okVisible = visible.filter((row) => row.ok);
+  const invalidVisible = visible.filter((row) => !row.ok);
+  const summary = summarize(okVisible);
+
+  renderStats(summary, invalidVisible.length);
   renderBreakdown(countriesList, summary.countries);
   renderBreakdown(citiesList, summary.cities);
-  renderTable(allRows);
+}
+
+function renderResults(rows, invalid) {
+  allRows = [...invalid, ...rows];
+  resetFilters();
+  applyFilters();
 
   summarySection.hidden = false;
   tableSection.hidden = false;
   exportBtn.disabled = !allRows.length;
 
-  headerStatusEl.textContent = `${summary.ok} из ${allRows.length}`;
+  const okCount = rows.filter((r) => r.ok).length;
+  headerStatusEl.textContent = `${okCount} из ${allRows.length}`;
 }
 
 async function runLookup() {
@@ -199,8 +295,9 @@ async function runLookup() {
 }
 
 function exportCsv() {
-  if (!allRows.length) return;
-  const blob = new Blob([toCsv(allRows)], {
+  const visible = getVisibleRows();
+  if (!visible.length) return;
+  const blob = new Blob([toCsv(visible)], {
     type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
@@ -246,14 +343,22 @@ clearBtn.addEventListener("click", () => {
   if (abortController) abortController.abort();
   inputEl.value = "";
   allRows = [];
+  resetFilters();
   summarySection.hidden = true;
   tableSection.hidden = true;
   exportBtn.disabled = true;
   headerStatusEl.textContent = "";
+  filterCountEl.textContent = "";
+  filterEmptyEl.hidden = true;
   showInputError("");
   inputEl.focus();
 });
 cancelBtn.addEventListener("click", () => abortController?.abort());
+
+filterInputs.forEach((input) => {
+  input.addEventListener("input", applyFilters);
+});
+resetFiltersBtn.addEventListener("click", resetFilters);
 
 document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
